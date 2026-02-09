@@ -127,6 +127,27 @@ export async function POST(request: Request) {
   let userId: string | null = null
   let creditsRemaining: number | null = null
 
+  const appendUsageLog = async (params: {
+    status: "success" | "failed" | "rate_limited" | "insufficient_credits"
+    failureReason?: string
+    processingMs?: number
+  }) => {
+    if (!admin || !userId) return
+
+    try {
+      await admin.from("usage_logs").insert({
+        user_id: userId,
+        plan: effectiveTier === "guest" ? "free" : effectiveTier,
+        image_count: inputs.length,
+        processing_ms: params.processingMs ?? null,
+        status: params.status,
+        failure_reason: params.failureReason || null,
+      })
+    } catch {
+      // Logging failure should never block the main response.
+    }
+  }
+
   if (authToken && hasAuthConfig) {
     const authClient = createClient(supabaseUrl!, supabaseAnonKey!, {
       global: { headers: { Authorization: authToken } },
@@ -174,6 +195,10 @@ export async function POST(request: Request) {
   const isPaid = effectiveTier === "pro" || effectiveTier === "business"
 
   if (!isPaid && inputs.length > 1) {
+    await appendUsageLog({
+      status: "failed",
+      failureReason: "Guest/free single upload restriction.",
+    })
     return jsonError(400, "SINGLE_UPLOAD_ONLY", "Guest and free users can upload one image at a time.")
   }
 
@@ -185,6 +210,10 @@ export async function POST(request: Request) {
       const code = rateLimit.error.toLowerCase().includes("monthly")
         ? "MONTHLY_LIMIT_REACHED"
         : "RATE_LIMITED"
+      await appendUsageLog({
+        status: code === "RATE_LIMITED" ? "rate_limited" : "failed",
+        failureReason: rateLimit.error,
+      })
       return jsonError(rateLimit.status, code, rateLimit.error)
     }
   }
@@ -196,14 +225,26 @@ export async function POST(request: Request) {
       .single<DeductCreditsResult>()
 
     if (deductError || !deductData) {
+      await appendUsageLog({
+        status: "failed",
+        failureReason: "Failed to deduct credits.",
+      })
       return jsonError(500, "DB_ERROR", "Failed to deduct credits.")
     }
 
     if (!deductData.ok) {
       if (deductData.error_code === "INSUFFICIENT_CREDITS") {
+        await appendUsageLog({
+          status: "insufficient_credits",
+          failureReason: "Not enough credits.",
+        })
         return jsonError(402, "INSUFFICIENT_CREDITS", "Not enough credits.")
       }
 
+      await appendUsageLog({
+        status: "failed",
+        failureReason: "Subscription no longer active for paid tier.",
+      })
       return jsonError(403, "UPGRADE_REQUIRED", "Active Pro or Business subscription required.")
     }
 
@@ -219,6 +260,11 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Third-party image processing failed."
+    await appendUsageLog({
+      status: "failed",
+      failureReason: message,
+      processingMs: Date.now() - startedAt,
+    })
     return jsonError(502, "UPSTREAM_ERROR", message)
   }
 
@@ -243,6 +289,11 @@ export async function POST(request: Request) {
       await new Promise((resolve) => setTimeout(resolve, remainingMs))
     }
   }
+
+  await appendUsageLog({
+    status: "success",
+    processingMs: Date.now() - startedAt,
+  })
 
   return NextResponse.json({
     ok: true,

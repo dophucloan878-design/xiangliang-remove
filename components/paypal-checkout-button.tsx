@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useId, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
 
 type BillingCycle = "monthly" | "annual"
 type PaidPlan = "pro" | "business"
@@ -67,6 +68,7 @@ export function PayPalCheckoutButton({ plan, billingCycle }: PayPalCheckoutButto
   const [loadFailed, setLoadFailed] = useState(false)
   const reactId = useId()
   const containerId = `paypal-buttons-${plan}-${billingCycle}-${reactId.replace(/[:]/g, "")}`
+  const [supabase] = useState(() => createClient())
 
   useEffect(() => {
     let cancelled = false
@@ -115,10 +117,35 @@ export function PayPalCheckoutButton({ plan, billingCycle }: PayPalCheckoutButto
             ],
           })
         },
-        onApprove: async (_data, actions) => {
+        onApprove: async (data, actions) => {
           const capture = await actions.order.capture()
           if (capture?.status && capture.status !== "COMPLETED") {
             setStatusMessage(`Payment status: ${capture.status}. Please contact support if needed.`)
+            return
+          }
+
+          const { data: sessionData } = await supabase.auth.getSession()
+          const accessToken = sessionData.session?.access_token
+
+          const logResponse = await fetch("/api/paypal/capture-order", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+            },
+            body: JSON.stringify({
+              orderId: data.orderID,
+              plan,
+              billingCycle,
+              captureResult: capture,
+            }),
+          })
+
+          if (!logResponse.ok) {
+            const payload = await logResponse.json().catch(() => null)
+            setStatusMessage(
+              payload?.message || "Payment completed, but billing sync is pending. Please refresh dashboard shortly."
+            )
             return
           }
 
@@ -137,7 +164,7 @@ export function PayPalCheckoutButton({ plan, billingCycle }: PayPalCheckoutButto
     return () => {
       cancelled = true
     }
-  }, [billingCycle, containerId, plan])
+  }, [billingCycle, containerId, plan, supabase])
 
   return (
     <div>

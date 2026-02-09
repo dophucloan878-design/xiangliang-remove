@@ -109,6 +109,9 @@ export function Header() {
           {userLabel ? (
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground">Welcome, {userLabel}!</span>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 Sign out
               </Button>
@@ -184,6 +187,9 @@ export function Header() {
             {userLabel ? (
               <div className="flex flex-col gap-2">
                 <span className="text-sm text-muted-foreground">Welcome, {userLabel}!</span>
+                <Button variant="outline" size="sm" className="w-fit" asChild>
+                  <Link href="/dashboard">Dashboard</Link>
+                </Button>
                 <Button variant="outline" size="sm" className="w-fit" onClick={handleSignOut}>
                   Sign out
                 </Button>

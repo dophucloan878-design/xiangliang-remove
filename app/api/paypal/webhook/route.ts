@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 
 type Plan = "free" | "pro" | "business"
 type PlanStatus = "active" | "trialing" | "past_due" | "canceled" | "expired"
+type BillingCycle = "monthly" | "annual"
 
 type PayPalWebhookEvent = {
   id?: string
@@ -104,7 +105,10 @@ const verifyWebhookSignature = async (
   return response.ok && data?.verification_status === "SUCCESS"
 }
 
-const getMappedPlan = (planId: string | undefined, planMap: Record<string, Plan>) => {
+const getMappedPlan = (
+  planId: string | undefined,
+  planMap: Record<string, { plan: Plan; billingCycle: BillingCycle }>
+) => {
   if (!planId) return null
   return planMap[planId] || null
 }
@@ -183,15 +187,15 @@ export async function POST(request: Request) {
 
   const eventType = event.event_type || ""
 
-  const planMap: Record<string, Plan> = {}
+  const planMap: Record<string, { plan: Plan; billingCycle: BillingCycle }> = {}
   const proMonthlyId = process.env.PAYPAL_PLAN_ID_PRO_MONTHLY
   const proAnnualId = process.env.PAYPAL_PLAN_ID_PRO_ANNUAL
   const businessMonthlyId = process.env.PAYPAL_PLAN_ID_BUSINESS_MONTHLY
   const businessAnnualId = process.env.PAYPAL_PLAN_ID_BUSINESS_ANNUAL
-  if (proMonthlyId) planMap[proMonthlyId] = "pro"
-  if (proAnnualId) planMap[proAnnualId] = "pro"
-  if (businessMonthlyId) planMap[businessMonthlyId] = "business"
-  if (businessAnnualId) planMap[businessAnnualId] = "business"
+  if (proMonthlyId) planMap[proMonthlyId] = { plan: "pro", billingCycle: "monthly" }
+  if (proAnnualId) planMap[proAnnualId] = { plan: "pro", billingCycle: "annual" }
+  if (businessMonthlyId) planMap[businessMonthlyId] = { plan: "business", billingCycle: "monthly" }
+  if (businessAnnualId) planMap[businessAnnualId] = { plan: "business", billingCycle: "annual" }
 
   const resource = event.resource || {}
   const payerEmail = resource.subscriber?.email_address || resource.payer?.email_address || ""
@@ -263,37 +267,97 @@ export async function POST(request: Request) {
     }
   }
 
+  const appendBillingRecord = async (params: {
+    plan: Plan | null
+    billingCycle: BillingCycle | null
+    status: string
+    refundNote?: string
+  }) => {
+    const payload = {
+      user_id: userId,
+      provider: "paypal",
+      provider_event_id: event.id || null,
+      provider_reference: resource.id || null,
+      plan: params.plan,
+      billing_cycle: params.billingCycle,
+      status: params.status,
+      refund_note: params.refundNote || null,
+      metadata: {
+        event_type: eventType,
+        resource,
+      },
+    }
+
+    if (event.id) {
+      await admin.from("billing_records").upsert(payload, { onConflict: "provider_event_id" })
+      return
+    }
+
+    await admin.from("billing_records").insert(payload)
+  }
+
+  const getCurrentSubscription = async () => {
+    const { data } = await admin
+      .from("subscriptions")
+      .select("plan")
+      .eq("user_id", userId)
+      .maybeSingle<{ plan: Plan }>()
+    return data?.plan || null
+  }
+
   try {
     if (
       eventType === "BILLING.SUBSCRIPTION.CREATED" ||
       eventType === "BILLING.SUBSCRIPTION.ACTIVATED" ||
       eventType === "BILLING.SUBSCRIPTION.UPDATED"
     ) {
-      const plan = getMappedPlan(resource.plan_id, planMap)
-      if (!plan || plan === "free") {
+      const mappedPlan = getMappedPlan(resource.plan_id, planMap)
+      if (!mappedPlan || mappedPlan.plan === "free") {
         return NextResponse.json({ ok: true, ignored: true, reason: "Plan mapping not found." })
       }
 
       const status = statusFromPayPal(resource.status)
       const periodEnd =
-        toIsoOrNull(resource.billing_info?.next_billing_time) || (plan === "business" ? addDays(365) : addDays(30))
+        toIsoOrNull(resource.billing_info?.next_billing_time) ||
+        (mappedPlan.billingCycle === "annual" ? addDays(365) : addDays(30))
 
-      await upsertSubscription(plan, status, periodEnd)
+      await upsertSubscription(mappedPlan.plan, status, periodEnd)
+      await appendBillingRecord({
+        plan: mappedPlan.plan,
+        billingCycle: mappedPlan.billingCycle,
+        status,
+      })
       return NextResponse.json({ ok: true })
     }
 
     if (eventType === "BILLING.SUBSCRIPTION.CANCELLED") {
       await updateStatusOnly("canceled")
+      await appendBillingRecord({
+        plan: await getCurrentSubscription(),
+        billingCycle: null,
+        status: "canceled",
+      })
       return NextResponse.json({ ok: true })
     }
 
     if (eventType === "BILLING.SUBSCRIPTION.EXPIRED") {
       await updateStatusOnly("expired")
+      await appendBillingRecord({
+        plan: await getCurrentSubscription(),
+        billingCycle: null,
+        status: "expired",
+      })
       return NextResponse.json({ ok: true })
     }
 
     if (eventType === "BILLING.SUBSCRIPTION.SUSPENDED" || eventType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED") {
       await updateStatusOnly("past_due")
+      await appendBillingRecord({
+        plan: await getCurrentSubscription(),
+        billingCycle: null,
+        status: "past_due",
+        refundNote: "Payment failed. Please update payment method in PayPal.",
+      })
       return NextResponse.json({ ok: true })
     }
 
