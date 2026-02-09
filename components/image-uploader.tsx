@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { MONTHLY_FREE_LIMIT } from "@/lib/limits"
 import { createClient } from "@/lib/supabase/client"
+import { getOAuthCallbackUrl } from "@/lib/auth-redirect"
 
 type UserTier = "guest" | "free" | "pro" | "business"
 
@@ -183,7 +184,7 @@ export function ImageUploader() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: getOAuthCallbackUrl(),
       },
     })
   }

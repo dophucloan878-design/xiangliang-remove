@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Menu, X, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
+import { getOAuthCallbackUrl } from "@/lib/auth-redirect"
 import googleLogo from "@/images/google-color.png"
 
 export function Header() {
@@ -19,7 +20,7 @@ export function Header() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: getOAuthCallbackUrl(),
       },
     })
   }
@@ -77,7 +78,10 @@ export function Header() {
   }, [isSignInOpen])
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <header
+      className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl"
+      suppressHydrationWarning
+    >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
