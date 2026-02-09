@@ -14,9 +14,29 @@ declare global {
   interface Window {
     paypal?: {
       Buttons: (options: {
-        createOrder: () => Promise<string>
-        onApprove: (data: { orderID: string }) => Promise<void>
-        onError: (error: unknown) => void
+        createOrder: (
+          data: unknown,
+          actions: {
+            order: {
+              create: (payload: {
+                intent: "CAPTURE"
+                purchase_units: Array<{
+                  description: string
+                  amount: { currency_code: "USD"; value: string }
+                }>
+              }) => Promise<string>
+            }
+          }
+        ) => Promise<string>
+        onApprove: (
+          data: { orderID: string },
+          actions: {
+            order: {
+              capture: () => Promise<{ id?: string; status?: string }>
+            }
+          }
+        ) => Promise<void>
+        onError: (error: { message?: string }) => void
         style?: {
           layout?: "vertical" | "horizontal"
           shape?: "pill" | "rect"
@@ -29,6 +49,17 @@ declare global {
       }
     }
   }
+}
+
+const amountMap: Record<PaidPlan, Record<BillingCycle, string>> = {
+  pro: {
+    monthly: "9.00",
+    annual: "69.00",
+  },
+  business: {
+    monthly: "19.00",
+    annual: "149.00",
+  },
 }
 
 export function PayPalCheckoutButton({ plan, billingCycle }: PayPalCheckoutButtonProps) {
@@ -70,41 +101,31 @@ export function PayPalCheckoutButton({ plan, billingCycle }: PayPalCheckoutButto
           label: "paypal",
           height: 48,
         },
-        createOrder: async () => {
-          const response = await fetch("/api/paypal/create-order", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ plan, billingCycle }),
+        createOrder: async (_data, actions) => {
+          return actions.order.create({
+            intent: "CAPTURE",
+            purchase_units: [
+              {
+                description: `Xiangliang Remove ${plan.toUpperCase()} (${billingCycle})`,
+                amount: {
+                  currency_code: "USD",
+                  value: amountMap[plan][billingCycle],
+                },
+              },
+            ],
           })
-
-          const data = await response.json()
-          if (!response.ok || !data?.orderId) {
-            throw new Error(data?.message || "Unable to create PayPal order.")
-          }
-
-          return data.orderId
         },
-        onApprove: async (data) => {
-          const response = await fetch("/api/paypal/capture-order", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ orderId: data.orderID }),
-          })
-
-          const payload = await response.json()
-          if (!response.ok) {
-            setStatusMessage(payload?.message || "Payment capture failed.")
+        onApprove: async (_data, actions) => {
+          const capture = await actions.order.capture()
+          if (capture?.status && capture.status !== "COMPLETED") {
+            setStatusMessage(`Payment status: ${capture.status}. Please contact support if needed.`)
             return
           }
 
           setStatusMessage("Payment completed. Your access will sync shortly.")
         },
-        onError: () => {
-          setStatusMessage("Payment failed. Please try again.")
+        onError: (error) => {
+          setStatusMessage(error?.message || "Payment failed. Please try again.")
         },
       })
 
