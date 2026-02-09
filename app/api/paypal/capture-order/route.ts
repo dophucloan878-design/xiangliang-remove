@@ -8,6 +8,25 @@ type BillingCycle = "monthly" | "annual"
 const isPlan = (value: string): value is Plan => value === "pro" || value === "business"
 const isBillingCycle = (value: string): value is BillingCycle => value === "monthly" || value === "annual"
 
+const addDays = (days: number) => {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return date.toISOString()
+}
+
+const getPlanCredits = (plan: Plan, billingCycle: BillingCycle) => {
+  const proMonthly = Number(process.env.PRO_MONTHLY_CREDITS || "200")
+  const businessMonthly = Number(process.env.BUSINESS_MONTHLY_CREDITS || "1000")
+  const proAnnual = Number(process.env.PRO_ANNUAL_CREDITS || proMonthly)
+  const businessAnnual = Number(process.env.BUSINESS_ANNUAL_CREDITS || businessMonthly)
+
+  if (plan === "pro") {
+    return billingCycle === "annual" ? proAnnual : proMonthly
+  }
+
+  return billingCycle === "annual" ? businessAnnual : businessMonthly
+}
+
 export async function POST(request: Request) {
   try {
     const { orderId, plan, billingCycle, captureResult } = await request.json()
@@ -97,6 +116,23 @@ export async function POST(request: Request) {
             order: data,
           },
         })
+
+        if (typeof plan === "string" && typeof billingCycle === "string" && isPlan(plan) && isBillingCycle(billingCycle)) {
+          const periodEnd = billingCycle === "annual" ? addDays(365) : addDays(30)
+          const credits = getPlanCredits(plan, billingCycle)
+
+          await admin.from("subscriptions").upsert(
+            {
+              user_id: user.id,
+              plan,
+              status: "active",
+              current_period_end: periodEnd,
+              credits_remaining: credits,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id" }
+          )
+        }
       }
     }
 
