@@ -4,8 +4,8 @@ import { Sparkles, Twitter, Github, Linkedin } from "lucide-react"
 const footerLinks = {
   product: [
     { name: "Features", href: "#features" },
-    { name: "Showcase", href: "#showcase" },
-    { name: "Pricing", href: "#" },
+    { name: "Pricing", href: "/pricing" },
+    { name: "Upgrade", href: "/pricing" },
   ],
   resources: [
     { name: "Documentation", href: "#" },
@@ -20,8 +20,8 @@ const footerLinks = {
     { name: "Press", href: "#" },
   ],
   legal: [
-    { name: "Privacy Policy", href: "#" },
-    { name: "Terms of Service", href: "#" },
+    { name: "Privacy Policy", href: "/privacy-policy" },
+    { name: "Terms of Service", href: "/terms-of-use" },
     { name: "Cookie Policy", href: "#" },
   ],
 }

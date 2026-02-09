@@ -17,14 +17,14 @@ AI background removal SaaS website built with Next.js, Supabase, OpenRouter, and
   - Free: web-ready export
   - Pro: HD export
   - Business: original resolution export
-- Upgrade page with Monthly/Annual toggle and PayPal checkout buttons.
+- Pricing page with Monthly/Annual toggle and PayPal Checkout buttons.
 
 ### Tech Stack
 - Next.js 16 (App Router)
 - React 19
 - Supabase (Auth + Postgres)
 - OpenRouter (image model API)
-- PayPal (hosted checkout + webhooks)
+- PayPal Checkout + webhook sync
 
 ### Local Development
 1. Install dependencies:
@@ -43,13 +43,8 @@ Create `.env.local` and configure at least:
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `OPENROUTER_API_KEY`
 
-- PayPal buttons (frontend)
-  - `NEXT_PUBLIC_PAYPAL_PAYMENT_BASE_URL` (optional)
-  - `NEXT_PUBLIC_PAYPAL_HOSTED_BUTTON_ID_FREE` (optional)
-  - `NEXT_PUBLIC_PAYPAL_HOSTED_BUTTON_ID_PRO`
-  - `NEXT_PUBLIC_PAYPAL_HOSTED_BUTTON_ID_BUSINESS`
-  - `NEXT_PUBLIC_PAYPAL_HOSTED_BUTTON_ID_PRO_ANNUAL` (optional)
-  - `NEXT_PUBLIC_PAYPAL_HOSTED_BUTTON_ID_BUSINESS_ANNUAL` (optional)
+- PayPal checkout (frontend)
+  - `NEXT_PUBLIC_PAYPAL_CLIENT_ID`
 
 - PayPal webhook (server)
   - `PAYPAL_CLIENT_ID`
@@ -76,6 +71,10 @@ Optional seed script:
 - Configure this URL in PayPal Developer Dashboard:
   - `https://your-domain/api/paypal/webhook`
 
+### PayPal Checkout Endpoints
+- Create order: `/api/paypal/create-order`
+- Capture order: `/api/paypal/capture-order`
+
 ### Deploy (Vercel)
 1. Import repository in Vercel.
 2. Configure environment variables.
@@ -100,7 +99,7 @@ Optional seed script:
   - Free：网页级导出
   - Pro：高清导出
   - Business：原始分辨率导出
-- 升级页支持月付/年付切换，并集成 PayPal 支付按钮。
+- Pricing 页面支持月付/年付切换，并集成 PayPal Checkout 支付按钮。
 
 ### 本地启动
 1. 安装依赖：`npm install`
@@ -116,13 +115,8 @@ Optional seed script:
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `OPENROUTER_API_KEY`
 
-- PayPal 前端按钮变量
-  - `NEXT_PUBLIC_PAYPAL_PAYMENT_BASE_URL`（可选）
-  - `NEXT_PUBLIC_PAYPAL_HOSTED_BUTTON_ID_FREE`（可选）
-  - `NEXT_PUBLIC_PAYPAL_HOSTED_BUTTON_ID_PRO`
-  - `NEXT_PUBLIC_PAYPAL_HOSTED_BUTTON_ID_BUSINESS`
-  - `NEXT_PUBLIC_PAYPAL_HOSTED_BUTTON_ID_PRO_ANNUAL`（可选）
-  - `NEXT_PUBLIC_PAYPAL_HOSTED_BUTTON_ID_BUSINESS_ANNUAL`（可选）
+- PayPal 前端结账变量
+  - `NEXT_PUBLIC_PAYPAL_CLIENT_ID`
 
 - PayPal Webhook 服务端变量
   - `PAYPAL_CLIENT_ID`
@@ -148,6 +142,10 @@ Optional seed script:
 - 项目 webhook 路由：`/api/paypal/webhook`
 - 在 PayPal Developer 后台配置监听地址：
   - `https://你的域名/api/paypal/webhook`
+
+### PayPal Checkout 接口
+- 创建订单：`/api/paypal/create-order`
+- 捕获订单：`/api/paypal/capture-order`
 
 ### 部署建议（Vercel）
 1. 导入仓库并部署。

@@ -90,6 +90,9 @@ export function Header() {
           <Link href="/#features" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
             Features
           </Link>
+          <Link href="/pricing" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Pricing
+          </Link>
           <Link href="/#testimonials" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
             Reviews
           </Link>
@@ -143,10 +146,10 @@ export function Header() {
             </div>
           )}
           <Button variant="outline" size="sm" asChild>
-            <Link href="/upgrade">Upgrade Plan</Link>
+            <Link href="/pricing">Upgrade Plan</Link>
           </Button>
-          <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-            Get Started Free
+          <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" asChild>
+            <Link href="/#remove-background">Get Started Free</Link>
           </Button>
         </div>
 
@@ -164,6 +167,9 @@ export function Header() {
           <nav className="flex flex-col gap-4 p-4">
             <Link href="/#features" className="text-sm text-muted-foreground hover:text-foreground">
               Features
+            </Link>
+            <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground">
+              Pricing
             </Link>
             <Link href="/#testimonials" className="text-sm text-muted-foreground hover:text-foreground">
               Reviews
@@ -184,10 +190,10 @@ export function Header() {
               </Button>
             )}
             <Button variant="outline" size="sm" className="w-fit" asChild>
-              <Link href="/upgrade">Upgrade Plan</Link>
+              <Link href="/pricing">Upgrade Plan</Link>
             </Button>
-            <Button size="sm" className="w-fit bg-primary text-primary-foreground">
-              Get Started Free
+            <Button size="sm" className="w-fit bg-primary text-primary-foreground" asChild>
+              <Link href="/#remove-background">Get Started Free</Link>
             </Button>
           </nav>
         </div>
