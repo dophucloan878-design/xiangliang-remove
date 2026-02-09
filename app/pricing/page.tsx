@@ -115,7 +115,10 @@ const annualCards: PricingCard[] = [
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly")
-  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
+  const paypalClientId =
+    process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
+    process.env.NEXT_PUBLIC_PayPal_CLIENT_ID ||
+    "Ab7GmVwQIO7BjH-KgEX0sPyoIA9aU_oczGPx8S2J27fbhSC-yxeOkKkFPJh1pRDppqIsp8tdO65WrSdf"
 
   const cards = useMemo(
     () => (billingCycle === "monthly" ? monthlyCards : annualCards),
