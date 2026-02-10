@@ -4,25 +4,16 @@ import { Sparkles, Twitter, Github, Linkedin } from "lucide-react"
 const footerLinks = {
   product: [
     { name: "Features", href: "#features" },
-    { name: "Pricing", href: "/pricing" },
     { name: "Upgrade", href: "/pricing" },
   ],
-  resources: [
-    { name: "Documentation", href: "#" },
-    { name: "Tutorials", href: "#" },
-    { name: "Blog", href: "#" },
-    { name: "Support", href: "#" },
-  ],
   company: [
-    { name: "About", href: "#" },
-    { name: "Careers", href: "#" },
-    { name: "Contact", href: "#" },
-    { name: "Press", href: "#" },
+    { name: "About Us", href: "/about-us" },
+    { name: "Contact", href: "/contact" },
   ],
   legal: [
     { name: "Privacy Policy", href: "/privacy-policy" },
     { name: "Terms of Service", href: "/terms-of-use" },
-    { name: "Cookie Policy", href: "#" },
+    { name: "Cookie Policy", href: "/cookie-policy" },
   ],
 }
 
@@ -68,26 +59,11 @@ export function Footer() {
           </div>
 
           {/* Links */}
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:col-span-4">
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-4">
             <div>
               <h3 className="mb-4 text-sm font-semibold">Product</h3>
               <ul className="space-y-3">
                 {footerLinks.product.map((link) => (
-                  <li key={link.name}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="mb-4 text-sm font-semibold">Resources</h3>
-              <ul className="space-y-3">
-                {footerLinks.resources.map((link) => (
                   <li key={link.name}>
                     <Link
                       href={link.href}

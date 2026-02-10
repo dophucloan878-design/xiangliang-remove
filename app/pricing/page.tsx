@@ -140,12 +140,11 @@ export default function PricingPage() {
         <section className="pb-20 md:pb-28">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="text-sm font-medium text-primary">Pricing</p>
-              <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-                Remove backgrounds at your scale
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+                Remove backgrounds in seconds — from one image to thousands.
               </h1>
               <p className="mt-4 text-lg text-muted-foreground">
-                Start free and upgrade when your workflow grows. Built for creators, stores, and teams.
+                Start free and scale up anytime. Perfect for creators, stores, and teams.
               </p>
 
               <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-border bg-card p-1">

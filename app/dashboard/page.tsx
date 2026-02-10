@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { CancelSubscriptionButton } from "@/components/cancel-subscription-button"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
 import { FREE_MONTHLY_LIMIT } from "@/lib/limits"
@@ -11,6 +12,7 @@ type SubscriptionRow = {
   status: "active" | "trialing" | "past_due" | "canceled" | "expired"
   current_period_end: string
   credits_remaining: number | null
+  paypal_subscription_id: string | null
 }
 
 type BillingRow = {
@@ -65,7 +67,7 @@ export default async function DashboardPage() {
   const [subscriptionResult, billingResult, usageResult, freeUsageCountResult] = await Promise.all([
     supabase
       .from("subscriptions")
-      .select("plan,status,current_period_end,credits_remaining")
+      .select("plan,status,current_period_end,credits_remaining,paypal_subscription_id")
       .eq("user_id", user.id)
       .maybeSingle<SubscriptionRow>(),
     supabase
@@ -97,10 +99,22 @@ export default async function DashboardPage() {
   const currentStatus = subscription?.status || "active"
   const periodEnd = subscription?.current_period_end || null
   const creditsRemaining = subscription?.credits_remaining ?? null
+  const paypalSubscriptionId = subscription?.paypal_subscription_id || null
   const freeMonthlyUsed = freeUsageCountResult.error ? 0 : freeUsageCountResult.count || 0
   const freeRemaining = Math.max(FREE_MONTHLY_LIMIT - freeMonthlyUsed, 0)
   const creditsLabel = currentPlan === "free" ? "Monthly Free Remaining" : "Credits Remaining"
   const creditsValue = currentPlan === "free" ? `${freeRemaining} / ${FREE_MONTHLY_LIMIT}` : creditsRemaining === null ? "-" : creditsRemaining
+  const isPaidPlan = currentPlan === "pro" || currentPlan === "business"
+  const canCancelStatus = currentStatus === "active" || currentStatus === "trialing" || currentStatus === "past_due"
+  const canCancelDirectly = Boolean(isPaidPlan && canCancelStatus && paypalSubscriptionId)
+  const canUseManageFallback = Boolean(isPaidPlan && canCancelStatus && !paypalSubscriptionId)
+  const cancelDisabledReason = !isPaidPlan
+    ? "Free plan does not require cancellation."
+    : !canCancelStatus
+      ? `Subscription is already ${currentStatus}.`
+      : !paypalSubscriptionId
+        ? "Direct cancel unavailable for this order. Click to continue in PayPal Manage."
+        : undefined
 
   const paypalManageUrl =
     process.env.NEXT_PUBLIC_PAYPAL_MANAGE_SUBSCRIPTION_URL ||
@@ -152,11 +166,11 @@ export default async function DashboardPage() {
                       Manage in PayPal
                     </a>
                   </Button>
-                  <Button variant="outline" asChild>
-                    <a href={paypalManageUrl} target="_blank" rel="noreferrer">
-                      Cancel Subscription
-                    </a>
-                  </Button>
+                  <CancelSubscriptionButton
+                    enabled={canCancelDirectly}
+                    fallbackManageUrl={canUseManageFallback ? paypalManageUrl : undefined}
+                    disabledReason={cancelDisabledReason}
+                  />
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
                   Refund note: Refund processing follows your plan policy and PayPal settlement rules.

@@ -94,9 +94,6 @@ export function Header() {
           <Link href="/#features" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
             Features
           </Link>
-          <Link href="/pricing" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-            Pricing
-          </Link>
           <Link href="/#testimonials" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
             Reviews
           </Link>
@@ -174,9 +171,6 @@ export function Header() {
           <nav className="flex flex-col gap-4 p-4">
             <Link href="/#features" className="text-sm text-muted-foreground hover:text-foreground">
               Features
-            </Link>
-            <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground">
-              Pricing
             </Link>
             <Link href="/#testimonials" className="text-sm text-muted-foreground hover:text-foreground">
               Reviews

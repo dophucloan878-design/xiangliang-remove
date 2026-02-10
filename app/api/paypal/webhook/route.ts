@@ -227,14 +227,20 @@ export async function POST(request: Request) {
     return 0
   }
 
-  const upsertSubscription = async (plan: Plan, status: PlanStatus, periodEnd: string) => {
+  const upsertSubscription = async (
+    plan: Plan,
+    status: PlanStatus,
+    periodEnd: string,
+    paypalSubscriptionId?: string
+  ) => {
     const { data: existing } = await admin
       .from("subscriptions")
-      .select("credits_remaining")
+      .select("credits_remaining,paypal_subscription_id")
       .eq("user_id", userId)
       .maybeSingle()
 
     const credits = existing?.credits_remaining ?? defaultCreditsForPlan(plan)
+    const nextPayPalSubscriptionId = paypalSubscriptionId || existing?.paypal_subscription_id || null
 
     const { error } = await admin.from("subscriptions").upsert(
       {
@@ -243,6 +249,7 @@ export async function POST(request: Request) {
         status,
         current_period_end: periodEnd,
         credits_remaining: credits,
+        paypal_subscription_id: nextPayPalSubscriptionId,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" }
@@ -253,13 +260,23 @@ export async function POST(request: Request) {
     }
   }
 
-  const updateStatusOnly = async (status: PlanStatus) => {
+  const updateStatusOnly = async (status: PlanStatus, paypalSubscriptionId?: string) => {
+    const payload: {
+      status: PlanStatus
+      updated_at: string
+      paypal_subscription_id?: string
+    } = {
+      status,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (paypalSubscriptionId) {
+      payload.paypal_subscription_id = paypalSubscriptionId
+    }
+
     const { error } = await admin
       .from("subscriptions")
-      .update({
-        status,
-        updated_at: new Date().toISOString(),
-      })
+      .update(payload)
       .eq("user_id", userId)
 
     if (error) {
@@ -321,7 +338,7 @@ export async function POST(request: Request) {
         toIsoOrNull(resource.billing_info?.next_billing_time) ||
         (mappedPlan.billingCycle === "annual" ? addDays(365) : addDays(30))
 
-      await upsertSubscription(mappedPlan.plan, status, periodEnd)
+      await upsertSubscription(mappedPlan.plan, status, periodEnd, resource.id)
       await appendBillingRecord({
         plan: mappedPlan.plan,
         billingCycle: mappedPlan.billingCycle,
@@ -331,7 +348,7 @@ export async function POST(request: Request) {
     }
 
     if (eventType === "BILLING.SUBSCRIPTION.CANCELLED") {
-      await updateStatusOnly("canceled")
+      await updateStatusOnly("canceled", resource.id)
       await appendBillingRecord({
         plan: await getCurrentSubscription(),
         billingCycle: null,
@@ -341,7 +358,7 @@ export async function POST(request: Request) {
     }
 
     if (eventType === "BILLING.SUBSCRIPTION.EXPIRED") {
-      await updateStatusOnly("expired")
+      await updateStatusOnly("expired", resource.id)
       await appendBillingRecord({
         plan: await getCurrentSubscription(),
         billingCycle: null,
@@ -351,7 +368,7 @@ export async function POST(request: Request) {
     }
 
     if (eventType === "BILLING.SUBSCRIPTION.SUSPENDED" || eventType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED") {
-      await updateStatusOnly("past_due")
+      await updateStatusOnly("past_due", resource.id)
       await appendBillingRecord({
         plan: await getCurrentSubscription(),
         billingCycle: null,
