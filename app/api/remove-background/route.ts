@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js"
 import { toHdPngDataUrl, toLimitedPngDataUrl, toOriginalPngDataUrl } from "@/lib/image-processing"
 import { FREE_MAX_OUTPUT_EDGE_PX, PRO_MAX_OUTPUT_EDGE_PX } from "@/lib/limits"
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit"
-import { getSupabasePublishableKey } from "@/lib/supabase/env"
 
 type OpenRouterContentItem =
   | { type: "text"; text: string }
@@ -135,7 +134,7 @@ export async function POST(request: Request) {
   const startedAt = Date.now()
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = getSupabasePublishableKey()
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const openRouterKey = process.env.OPENROUTER_API_KEY
 

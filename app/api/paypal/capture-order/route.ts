@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { getPayPalAccessToken, getPayPalApiBase } from "@/lib/paypal"
-import { getSupabasePublishableKey } from "@/lib/supabase/env"
 
 type Plan = "pro" | "business"
 type BillingCycle = "monthly" | "annual"
@@ -67,7 +66,7 @@ export async function POST(request: Request) {
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = getSupabasePublishableKey()
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     const authHeader = request.headers.get("authorization") || request.headers.get("Authorization")
 

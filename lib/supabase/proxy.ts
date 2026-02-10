@@ -1,13 +1,10 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
-import { getRequiredSupabaseClientEnv } from "@/lib/supabase/env"
 
 type ResponseCookieOptions = Parameters<NextResponse["cookies"]["set"]>[2]
 type CookieToSet = { name: string; value: string; options?: ResponseCookieOptions }
 
 export async function updateSession(request: NextRequest) {
-  const { url, publishableKey } = getRequiredSupabaseClientEnv()
-
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -15,8 +12,8 @@ export async function updateSession(request: NextRequest) {
   })
 
   const supabase = createServerClient(
-    url,
-    publishableKey,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
