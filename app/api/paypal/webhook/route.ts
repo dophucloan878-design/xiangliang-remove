@@ -218,8 +218,8 @@ export async function POST(request: Request) {
 
   const admin = createClient(supabaseUrl, serviceRoleKey)
 
-  const proCredits = Number(process.env.PRO_MONTHLY_CREDITS || "200")
-  const businessCredits = Number(process.env.BUSINESS_MONTHLY_CREDITS || "1000")
+  const proCredits = Number(process.env.PRO_MONTHLY_CREDITS || "600")
+  const businessCredits = Number(process.env.BUSINESS_MONTHLY_CREDITS || "3000")
 
   const defaultCreditsForPlan = (plan: Plan) => {
     if (plan === "pro") return proCredits

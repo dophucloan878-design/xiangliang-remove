@@ -1,4 +1,4 @@
-import { MONTHLY_FREE_LIMIT, PER_MINUTE_LIMIT } from "@/lib/limits"
+import { FREE_MONTHLY_LIMIT, GUEST_MONTHLY_LIMIT, PER_MINUTE_LIMIT } from "@/lib/limits"
 
 type Counter = {
   count: number
@@ -45,6 +45,14 @@ const getCounter = (map: Map<string, Counter>, key: string, resetAt: number, now
 }
 
 type RateLimitResult = { ok: true } | { ok: false; status: number; error: string }
+type RateLimitTier = "guest" | "free"
+
+type CheckRateLimitParams = {
+  ip: string
+  fingerprint: string
+  tier: RateLimitTier
+  userId?: string | null
+}
 
 export const getClientIp = (request: Request) => {
   const forwardedFor = request.headers.get("x-forwarded-for")
@@ -55,13 +63,15 @@ export const getClientIp = (request: Request) => {
   return request.headers.get("x-real-ip") || "unknown"
 }
 
-export const checkRateLimit = (ip: string, fingerprint: string) => {
+export const checkRateLimit = ({ ip, fingerprint, tier, userId }: CheckRateLimitParams) => {
   const now = new Date()
   const nowMs = now.getTime()
   const monthKey = getMonthKey(now)
   const monthResetAt = getNextMonthReset(now)
+  const monthlyLimit = tier === "guest" ? GUEST_MONTHLY_LIMIT : FREE_MONTHLY_LIMIT
 
-  const minuteCounter = getCounter(store.minute, `ip-minute:${ip}`, nowMs + ONE_MINUTE_MS, nowMs)
+  const minuteScope = tier === "free" && userId ? `user-minute:${userId}` : `ip-minute:${ip}`
+  const minuteCounter = getCounter(store.minute, minuteScope, nowMs + ONE_MINUTE_MS, nowMs)
   if (minuteCounter.count >= PER_MINUTE_LIMIT) {
     return {
       ok: false,
@@ -70,22 +80,37 @@ export const checkRateLimit = (ip: string, fingerprint: string) => {
     } satisfies RateLimitResult
   }
 
+  if (tier === "free" && userId) {
+    const userMonthly = getCounter(store.monthly, `user-month:${userId}:${monthKey}`, monthResetAt, nowMs)
+    if (userMonthly.count >= monthlyLimit) {
+      return {
+        ok: false,
+        status: 429,
+        error: `Your free account has reached the monthly quota (${monthlyLimit} images).`,
+      } satisfies RateLimitResult
+    }
+
+    minuteCounter.count += 1
+    userMonthly.count += 1
+    return { ok: true } satisfies RateLimitResult
+  }
+
   const ipMonthly = getCounter(store.monthly, `ip-month:${ip}:${monthKey}`, monthResetAt, nowMs)
-  if (ipMonthly.count >= MONTHLY_FREE_LIMIT) {
+  if (ipMonthly.count >= monthlyLimit) {
     return {
       ok: false,
       status: 429,
-      error: "This IP has reached the monthly free quota (20 images).",
+      error: `This IP has reached the monthly guest quota (${monthlyLimit} images).`,
     } satisfies RateLimitResult
   }
 
   const fpKey = fingerprint || "unknown"
   const fpMonthly = getCounter(store.monthly, `fp-month:${fpKey}:${monthKey}`, monthResetAt, nowMs)
-  if (fpMonthly.count >= MONTHLY_FREE_LIMIT) {
+  if (fpMonthly.count >= monthlyLimit) {
     return {
       ok: false,
       status: 429,
-      error: "This device has reached the monthly free quota (20 images).",
+      error: `This device has reached the monthly guest quota (${monthlyLimit} images).`,
     } satisfies RateLimitResult
   }
 

@@ -18,6 +18,11 @@ type DeductCreditsResult = {
 
 type EffectiveTier = "guest" | "free" | "pro" | "business"
 
+type DbErrorLike = {
+  code?: string
+  message?: string
+}
+
 const BACKGROUND_REMOVAL_PROMPT =
   "Remove the background from the subject and return a PNG with a transparent background. " +
   "Keep the subject unchanged, preserve original colors, and do not crop or add new elements."
@@ -51,6 +56,40 @@ const extractImagesFromMessage = (message: any) => {
   }
 
   return images
+}
+
+const mapDeductCreditsDbError = (error: DbErrorLike) => {
+  const code = (error.code || "").toUpperCase()
+
+  if (code === "42P01") {
+    return {
+      status: 500,
+      errorCode: "SUBSCRIPTIONS_TABLE_MISSING",
+      message: "Subscription table is missing. Please run latest database migrations.",
+    }
+  }
+
+  if (code === "42883" || code === "PGRST202") {
+    return {
+      status: 500,
+      errorCode: "DEDUCT_CREDITS_FUNCTION_MISSING",
+      message: "Credit deduction function is missing. Please run latest database migrations.",
+    }
+  }
+
+  if (code === "42501") {
+    return {
+      status: 500,
+      errorCode: "DEDUCT_CREDITS_PERMISSION_DENIED",
+      message: "Credit deduction permission is invalid. Please verify database function grants.",
+    }
+  }
+
+  return {
+    status: 500,
+    errorCode: "DB_ERROR",
+    message: "Failed to deduct credits.",
+  }
 }
 
 const runOpenRouter = async (imageDataUrl: string, openRouterKey: string, origin: string) => {
@@ -205,7 +244,12 @@ export async function POST(request: Request) {
   if (!isPaid) {
     const ip = getClientIp(request)
     const fingerprint = request.headers.get("x-client-fp") || "unknown"
-    const rateLimit = checkRateLimit(ip, fingerprint)
+    const rateLimit = checkRateLimit({
+      ip,
+      fingerprint,
+      tier: effectiveTier === "guest" ? "guest" : "free",
+      userId,
+    })
     if (!rateLimit.ok) {
       const code = rateLimit.error.toLowerCase().includes("monthly")
         ? "MONTHLY_LIMIT_REACHED"
@@ -224,10 +268,19 @@ export async function POST(request: Request) {
       .rpc("deduct_credits", { p_user_id: userId, p_amount: inputs.length })
       .single<DeductCreditsResult>()
 
-    if (deductError || !deductData) {
+    if (deductError) {
+      const mapped = mapDeductCreditsDbError(deductError)
       await appendUsageLog({
         status: "failed",
-        failureReason: "Failed to deduct credits.",
+        failureReason: `${mapped.errorCode}: ${deductError.message || "unknown db error"}`,
+      })
+      return jsonError(mapped.status, mapped.errorCode, mapped.message)
+    }
+
+    if (!deductData) {
+      await appendUsageLog({
+        status: "failed",
+        failureReason: "DB_ERROR: deduct_credits returned empty result.",
       })
       return jsonError(500, "DB_ERROR", "Failed to deduct credits.")
     }

@@ -26,6 +26,7 @@ const monthlyCards: PricingCard[] = [
     subtitle: "For trying out and light use",
     price: "$0 / month",
     features: [
+      "20 removals per month",
       "Full background removal",
       "Web-ready exports (up to 1280px)",
       "Single image upload",
@@ -41,6 +42,7 @@ const monthlyCards: PricingCard[] = [
     subtitle: "For creators and growing stores",
     price: "$9 / month",
     features: [
+      "600 removals per month",
       "HD exports (up to 2048px)",
       "No watermark",
       "Faster processing",
@@ -56,6 +58,7 @@ const monthlyCards: PricingCard[] = [
     subtitle: "For teams and high-volume operations",
     price: "$19 / month",
     features: [
+      "3000 removals per month",
       "Everything in Pro",
       "Original-resolution exports",
       "Priority queue",
@@ -73,6 +76,7 @@ const annualCards: PricingCard[] = [
     subtitle: "For trying out and light use",
     price: "$0 / month",
     features: [
+      "20 removals per month",
       "Full background removal",
       "Web-ready exports (up to 1280px)",
       "Single image upload",
@@ -88,6 +92,7 @@ const annualCards: PricingCard[] = [
     subtitle: "Best for everyday creative work",
     price: "$69 / year",
     features: [
+      "600 removals per month",
       "High-resolution exports (up to 2048px)",
       "Watermark-free downloads",
       "Faster processing speed",
@@ -103,6 +108,7 @@ const annualCards: PricingCard[] = [
     subtitle: "For teams and high-volume workflows",
     price: "$149 / year",
     features: [
+      "3000 removals per month",
       "Everything in Pro",
       "Original-resolution exports",
       "Priority processing queue",
@@ -115,10 +121,7 @@ const annualCards: PricingCard[] = [
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly")
-  const paypalClientId =
-    process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
-    process.env.NEXT_PUBLIC_PayPal_CLIENT_ID ||
-    "Ab7GmVwQIO7BjH-KgEX0sPyoIA9aU_oczGPx8S2J27fbhSC-yxeOkKkFPJh1pRDppqIsp8tdO65WrSdf"
+  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
 
   const cards = useMemo(
     () => (billingCycle === "monthly" ? monthlyCards : annualCards),

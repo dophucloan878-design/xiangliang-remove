@@ -51,13 +51,13 @@ Create `.env.local` and configure at least:
   - `PAYPAL_CLIENT_ID`
   - `PAYPAL_CLIENT_SECRET`
   - `PAYPAL_WEBHOOK_ID`
-  - `PAYPAL_API_BASE` (`https://api-m.sandbox.paypal.com` or `https://api-m.paypal.com`)
+  - `PAYPAL_API_BASE` (`https://api-m.paypal.com` for live, `https://api-m.sandbox.paypal.com` for sandbox)
   - `PAYPAL_PLAN_ID_PRO_MONTHLY`
   - `PAYPAL_PLAN_ID_PRO_ANNUAL`
   - `PAYPAL_PLAN_ID_BUSINESS_MONTHLY`
   - `PAYPAL_PLAN_ID_BUSINESS_ANNUAL`
-  - `PRO_MONTHLY_CREDITS` (optional, default `200`)
-  - `BUSINESS_MONTHLY_CREDITS` (optional, default `1000`)
+  - `PRO_MONTHLY_CREDITS` (optional, default `600`)
+  - `BUSINESS_MONTHLY_CREDITS` (optional, default `3000`)
 
 ### Database Setup (Supabase)
 Run SQL migrations:
@@ -124,13 +124,13 @@ Optional seed script:
   - `PAYPAL_CLIENT_ID`
   - `PAYPAL_CLIENT_SECRET`
   - `PAYPAL_WEBHOOK_ID`
-  - `PAYPAL_API_BASE`（沙盒或正式）
+  - `PAYPAL_API_BASE`（正式环境用 `https://api-m.paypal.com`，沙盒用 `https://api-m.sandbox.paypal.com`）
   - `PAYPAL_PLAN_ID_PRO_MONTHLY`
   - `PAYPAL_PLAN_ID_PRO_ANNUAL`
   - `PAYPAL_PLAN_ID_BUSINESS_MONTHLY`
   - `PAYPAL_PLAN_ID_BUSINESS_ANNUAL`
-  - `PRO_MONTHLY_CREDITS`（可选，默认 200）
-  - `BUSINESS_MONTHLY_CREDITS`（可选，默认 1000）
+  - `PRO_MONTHLY_CREDITS`（可选，默认 600）
+  - `BUSINESS_MONTHLY_CREDITS`（可选，默认 3000）
 
 ### Supabase 数据库初始化
 按顺序执行：

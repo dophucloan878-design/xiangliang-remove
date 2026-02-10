@@ -12,8 +12,16 @@ const amountMap: Record<PaidPlan, Record<BillingCycle, string>> = {
   },
 }
 
+const PAYPAL_LIVE_API_BASE = "https://api-m.paypal.com"
+const PAYPAL_SANDBOX_API_BASE = "https://api-m.sandbox.paypal.com"
+
 export const getPayPalApiBase = () => {
-  return process.env.PAYPAL_API_BASE || "https://api-m.sandbox.paypal.com"
+  const configured = process.env.PAYPAL_API_BASE?.trim()
+  if (configured) {
+    return configured
+  }
+
+  return process.env.NODE_ENV === "production" ? PAYPAL_LIVE_API_BASE : PAYPAL_SANDBOX_API_BASE
 }
 
 export const getPayPalCredentials = () => {

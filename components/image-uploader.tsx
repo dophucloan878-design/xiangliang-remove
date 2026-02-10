@@ -13,11 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { MONTHLY_FREE_LIMIT } from "@/lib/limits"
+import { FREE_MONTHLY_LIMIT, GUEST_MONTHLY_LIMIT } from "@/lib/limits"
 import { createClient } from "@/lib/supabase/client"
 import { getOAuthCallbackUrl } from "@/lib/auth-redirect"
 
 type UserTier = "guest" | "free" | "pro" | "business"
+type UsageScope = "guest" | "free"
 
 type UploadItem = {
   id: string
@@ -58,21 +59,36 @@ export function ImageUploader() {
     return `${now.getFullYear()}-${month}`
   }
 
+  const getUsageStorageKeys = (scope: UsageScope) => {
+    if (scope === "free") {
+      return {
+        countKey: "bg_rm_free_used_count",
+        monthKey: "bg_rm_free_reset_month",
+      }
+    }
+
+    return {
+      countKey: "bg_rm_guest_used_count",
+      monthKey: "bg_rm_guest_reset_month",
+    }
+  }
+
   const syncUsageCookie = (count: number, monthKey: string) => {
     const maxAge = 60 * 60 * 24 * 40
     document.cookie = `bg_rm_used_count=${count}; path=/; max-age=${maxAge}`
     document.cookie = `bg_rm_reset_month=${monthKey}; path=/; max-age=${maxAge}`
   }
 
-  const readUsage = () => {
+  const readUsage = (scope: UsageScope) => {
+    const keys = getUsageStorageKeys(scope)
     const monthKey = getMonthKey()
-    const storedMonth = localStorage.getItem("bg_rm_reset_month")
-    const storedCount = Number(localStorage.getItem("bg_rm_used_count") || "0")
+    const storedMonth = localStorage.getItem(keys.monthKey)
+    const storedCount = Number(localStorage.getItem(keys.countKey) || "0")
     const isValidCount = Number.isFinite(storedCount) && storedCount >= 0
 
     if (storedMonth !== monthKey || !isValidCount) {
-      localStorage.setItem("bg_rm_reset_month", monthKey)
-      localStorage.setItem("bg_rm_used_count", "0")
+      localStorage.setItem(keys.monthKey, monthKey)
+      localStorage.setItem(keys.countKey, "0")
       syncUsageCookie(0, monthKey)
       setUsageCount(0)
       setResetMonth(monthKey)
@@ -85,9 +101,10 @@ export function ImageUploader() {
     return { monthKey, count: storedCount }
   }
 
-  const updateUsage = (nextCount: number, monthKey: string) => {
-    localStorage.setItem("bg_rm_used_count", String(nextCount))
-    localStorage.setItem("bg_rm_reset_month", monthKey)
+  const updateUsage = (scope: UsageScope, nextCount: number, monthKey: string) => {
+    const keys = getUsageStorageKeys(scope)
+    localStorage.setItem(keys.countKey, String(nextCount))
+    localStorage.setItem(keys.monthKey, monthKey)
     syncUsageCookie(nextCount, monthKey)
     setUsageCount(nextCount)
     setResetMonth(monthKey)
@@ -126,7 +143,7 @@ export function ImageUploader() {
   }
 
   useEffect(() => {
-    readUsage()
+    readUsage("guest")
   }, [])
 
   useEffect(() => {
@@ -176,6 +193,10 @@ export function ImageUploader() {
     }
   }, [supabase])
 
+  useEffect(() => {
+    readUsage(isAuthenticated ? "free" : "guest")
+  }, [isAuthenticated])
+
   const openLimitModal = () => {
     setLimitModalType(isAuthenticated ? "free" : "guest")
   }
@@ -198,8 +219,10 @@ export function ImageUploader() {
     })
 
   const requestProcessing = async (imageUrls: string[]) => {
-    const usageSnapshot = readUsage()
-    if (!isPaid && usageSnapshot.count >= MONTHLY_FREE_LIMIT) {
+    const usageScope: UsageScope = isAuthenticated ? "free" : "guest"
+    const monthlyLimit = usageScope === "free" ? FREE_MONTHLY_LIMIT : GUEST_MONTHLY_LIMIT
+    const usageSnapshot = readUsage(usageScope)
+    if (!isPaid && usageSnapshot.count >= monthlyLimit) {
       setError(null)
       openLimitModal()
       return
@@ -255,7 +278,7 @@ export function ImageUploader() {
       const serverPlan = typeof data?.plan === "string" ? data.plan : userTier
       const isServerPaid = serverPlan === "pro" || serverPlan === "business"
       if (!isServerPaid) {
-        updateUsage(usageSnapshot.count + 1, usageSnapshot.monthKey)
+        updateUsage(usageScope, usageSnapshot.count + 1, usageSnapshot.monthKey)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong."
@@ -344,26 +367,33 @@ export function ImageUploader() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {limitModalType === "guest" ? "Free Monthly Limit Reached" : "Monthly Free Usage Reached"}
+            {limitModalType === "guest" ? "Guest Monthly Limit Reached" : "Monthly Free Usage Reached"}
           </DialogTitle>
           <DialogDescription>
             {limitModalType === "guest"
-              ? "You've used all 20 free background removals for this month."
+              ? "You've used all 10 guest background removals for this month."
               : "You've reached your 20 free background removals for this month."}
           </DialogDescription>
         </DialogHeader>
-        <div className="text-sm text-muted-foreground">
-          {limitModalType === "guest"
-            ? "To keep removing backgrounds, we recommend creating a free account and upgrading to Pro to enjoy high-resolution, watermark-free downloads and faster processing."
-            : "You can upgrade to Pro for high-quality, watermark-free downloads and faster processing, or continue for free when your limit resets next month."}
-        </div>
+        {limitModalType === "guest" ? (
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">🎉 Unlock 20 free background removals</p>
+            <p>Sign in now and your free-account monthly quota resets to 20 removals.</p>
+            <p>Or continue as a guest next month when your guest quota resets.</p>
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">
+            You can upgrade to Pro for high-quality, watermark-free downloads and faster processing, or continue for
+            free when your limit resets next month.
+          </div>
+        )}
         <DialogFooter>
           {limitModalType === "guest" ? (
             <>
               <DialogClose asChild>
-                <Button variant="outline">Maybe Later</Button>
+                <Button variant="outline">Wait Until Next Month</Button>
               </DialogClose>
-              <Button onClick={handleGoogleSignIn}>Create Free Account</Button>
+              <Button onClick={handleGoogleSignIn}>Sign In to Unlock 20</Button>
             </>
           ) : (
             <>
@@ -539,7 +569,11 @@ export function ImageUploader() {
             ))}
           </div>
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            Free quota: {usageCount === null ? "-" : Math.max(MONTHLY_FREE_LIMIT - usageCount, 0)} / {MONTHLY_FREE_LIMIT} this month
+            {isAuthenticated ? "Free account quota" : "Guest quota"}: {usageCount === null
+              ? "-"
+              : Math.max((isAuthenticated ? FREE_MONTHLY_LIMIT : GUEST_MONTHLY_LIMIT) - usageCount, 0)} / {isAuthenticated
+              ? FREE_MONTHLY_LIMIT
+              : GUEST_MONTHLY_LIMIT} this month
             {resetMonth ? ` (reset ${resetMonth})` : ""}
           </p>
           {error ? <p className="mt-3 text-center text-xs text-destructive">{error}</p> : null}

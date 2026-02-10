@@ -15,8 +15,8 @@ const addDays = (days: number) => {
 }
 
 const getPlanCredits = (plan: Plan, billingCycle: BillingCycle) => {
-  const proMonthly = Number(process.env.PRO_MONTHLY_CREDITS || "200")
-  const businessMonthly = Number(process.env.BUSINESS_MONTHLY_CREDITS || "1000")
+  const proMonthly = Number(process.env.PRO_MONTHLY_CREDITS || "600")
+  const businessMonthly = Number(process.env.BUSINESS_MONTHLY_CREDITS || "3000")
   const proAnnual = Number(process.env.PRO_ANNUAL_CREDITS || proMonthly)
   const businessAnnual = Number(process.env.BUSINESS_ANNUAL_CREDITS || businessMonthly)
 

@@ -4,6 +4,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
+import { FREE_MONTHLY_LIMIT } from "@/lib/limits"
 
 type SubscriptionRow = {
   plan: "free" | "pro" | "business"
@@ -49,6 +50,9 @@ const formatMoney = (amount: string | number | null, currency?: string | null) =
 
 export default async function DashboardPage() {
   const supabase = await createClient()
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
 
   const {
     data: { user },
@@ -58,7 +62,7 @@ export default async function DashboardPage() {
     redirect("/")
   }
 
-  const [subscriptionResult, billingResult, usageResult] = await Promise.all([
+  const [subscriptionResult, billingResult, usageResult, freeUsageCountResult] = await Promise.all([
     supabase
       .from("subscriptions")
       .select("plan,status,current_period_end,credits_remaining")
@@ -76,6 +80,13 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(30),
+    supabase
+      .from("usage_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("plan", "free")
+      .gte("created_at", monthStart.toISOString())
+      .in("status", ["success", "failed"]),
   ])
 
   const subscription = subscriptionResult.error ? null : subscriptionResult.data
@@ -86,6 +97,10 @@ export default async function DashboardPage() {
   const currentStatus = subscription?.status || "active"
   const periodEnd = subscription?.current_period_end || null
   const creditsRemaining = subscription?.credits_remaining ?? null
+  const freeMonthlyUsed = freeUsageCountResult.error ? 0 : freeUsageCountResult.count || 0
+  const freeRemaining = Math.max(FREE_MONTHLY_LIMIT - freeMonthlyUsed, 0)
+  const creditsLabel = currentPlan === "free" ? "Monthly Free Remaining" : "Credits Remaining"
+  const creditsValue = currentPlan === "free" ? `${freeRemaining} / ${FREE_MONTHLY_LIMIT}` : creditsRemaining === null ? "-" : creditsRemaining
 
   const paypalManageUrl =
     process.env.NEXT_PUBLIC_PAYPAL_MANAGE_SUBSCRIPTION_URL ||
@@ -118,8 +133,7 @@ export default async function DashboardPage() {
                     <span className="font-medium text-foreground">Current Period End:</span> {formatDate(periodEnd)}
                   </p>
                   <p>
-                    <span className="font-medium text-foreground">Credits Remaining:</span>{" "}
-                    {creditsRemaining === null ? "-" : creditsRemaining}
+                    <span className="font-medium text-foreground">{creditsLabel}:</span> {creditsValue}
                   </p>
                 </div>
               </section>
