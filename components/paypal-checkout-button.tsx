@@ -104,6 +104,12 @@ export function PayPalCheckoutButton({ plan, billingCycle }: PayPalCheckoutButto
           height: 48,
         },
         createOrder: async (_data, actions) => {
+          const { data: sessionData } = await supabase.auth.getSession()
+          if (!sessionData.session?.access_token) {
+            setStatusMessage("Please sign in before starting checkout.")
+            throw new Error("AUTH_REQUIRED")
+          }
+
           return actions.order.create({
             intent: "CAPTURE",
             purchase_units: [
@@ -141,17 +147,25 @@ export function PayPalCheckoutButton({ plan, billingCycle }: PayPalCheckoutButto
             }),
           })
 
-          if (!logResponse.ok) {
-            const payload = await logResponse.json().catch(() => null)
+          const payload = await logResponse.json().catch(() => null)
+
+          if (!logResponse.ok || !payload?.ok) {
             setStatusMessage(
               payload?.message || "Payment completed, but billing sync is pending. Please refresh dashboard shortly."
             )
             return
           }
 
-          setStatusMessage("Payment completed. Your access will sync shortly.")
+          setStatusMessage(
+            payload?.synced
+              ? "Payment completed. Your plan is now active."
+              : "Payment completed, and your plan update is being synced."
+          )
         },
         onError: (error) => {
+          if (error?.message === "AUTH_REQUIRED") {
+            return
+          }
           setStatusMessage(error?.message || "Payment failed. Please try again.")
         },
       })
