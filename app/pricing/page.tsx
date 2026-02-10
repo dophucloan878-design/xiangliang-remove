@@ -129,7 +129,7 @@ export default function PricingPage() {
   )
 
   const scriptSrc = paypalClientId
-    ? `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&components=buttons&currency=USD`
+    ? `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&components=buttons&currency=USD&locale=en_US`
     : null
 
   return (
